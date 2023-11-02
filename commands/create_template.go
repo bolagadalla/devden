@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *string) {
@@ -18,12 +19,35 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 	createTemplate.Parse(os.Args[3:])
 
 	// Gets the absolute path of the path passed in
-	templatePath, err := filepath.Abs(os.Args[2])
+	var location string = os.Args[2]
+
+	if helpers.IsStringURL(location) {
+		err := HandleCloudTemplates(name, desc, location)
+		if err != nil {
+			fmt.Println("Could not save your cloud template")
+			os.Exit(1)
+		}
+	} else {
+		err := HandleLocalTemplate(name, desc, location)
+		if err != nil {
+			fmt.Println("Could not save your local template")
+			os.Exit(1)
+		}
+	}
+	// else {
+	// 	fmt.Printf("[%s] is not a valid path.", location)
+	// 	os.Exit(1)
+	// }
+}
+
+func HandleLocalTemplate(name *string, desc *string, location string) error {
+	// Gets the name at the end (ie path/template/template-name) will return template-name
+	templatePath, err := filepath.Abs(location)
 	if err != nil {
-		fmt.Printf("Couldn't resolve the given path: %s\n", os.Args[2])
+		fmt.Printf("Couldn't resolve the given path: %s\n", location)
+		return err
 	}
 
-	// Gets the name at the end (ie path/tempalte/template-name) will return template-name
 	_, templatePossibleName := filepath.Split(templatePath)
 
 	// If there is a name provided overwrite the template name
@@ -33,14 +57,14 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 
 	if templatePossibleName == "" {
 		fmt.Println("You must provide a template name for this template, run [dendev create-template <location> -name <template-name>]")
-		os.Exit(1)
+		return fmt.Errorf("There was no a template name provided.")
 	}
 
 	// Get path of the executable to create a directory there
 	execPath, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Println("You need to set a default home directory first.")
-		os.Exit(1)
+		return err
 	}
 
 	// Generate a path and create it if it doesnt exist
@@ -49,13 +73,12 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 
 	if err != nil {
 		fmt.Println("Dont have permission to create the required directories.")
-		os.Exit(1)
+		return err
 	}
 
-	// Zip the file
+	// Zip the template directory
 	helpers.Zip(templatePath, templatesDir, templatePossibleName)
 
-	// Write an object with the project configuration in it.
 	templateConfig := models.TemplateConfig{
 		Id:                   helpers.GenerateId(8),
 		Name:                 templatePossibleName,
@@ -66,5 +89,47 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 		PostCreationCommands: []string{},
 	}
 
+	// Write an object with the project configuration in it.
 	helpers.WriteJsonFile[*models.TemplateConfig](filepath.Join(templatesDir, "config.json"), &templateConfig)
+	return nil
+}
+
+func HandleCloudTemplates(name *string, desc *string, location string) error {
+	// Get path of the executable to create a directory there
+	execPath, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("You need to set a default home directory first.")
+		return err
+	}
+
+	locationSplit := strings.Split(location, "/")
+	templateName := strings.ReplaceAll(locationSplit[len(locationSplit)-1], ".git", "")
+
+	// If there is a name provided overwrite the template name
+	if *name != "" {
+		templateName = *name
+	}
+
+	if templateName == "" {
+		fmt.Println("You must provide a template name for this template, run [dendev create-template <location> -name <template-name>]")
+		return fmt.Errorf("There was no a template name provided.")
+	}
+
+	// Generate a path and create it if it doesnt exist
+	var templatesDir string = filepath.Join(execPath, ".devden", "templates", templateName)
+	err = os.MkdirAll(templatesDir, os.ModePerm)
+
+	templateConfig := models.TemplateConfig{
+		Id:                   helpers.GenerateId(8),
+		Name:                 templateName,
+		Description:          *desc,
+		URI:                  location,
+		IsCloud:              true,
+		PreCreationCommands:  []string{},
+		PostCreationCommands: []string{},
+	}
+
+	// Write an object with the project configuration in it.
+	helpers.WriteJsonFile[*models.TemplateConfig](filepath.Join(templatesDir, "config.json"), &templateConfig)
+	return nil
 }
