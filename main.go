@@ -18,6 +18,7 @@ func main() {
 	createTemplate := flag.NewFlagSet("create-template", flag.PanicOnError)
 	templateName := createTemplate.String("name", "", "The template name which will be used when you create from the template. It will default to the template root directory name or git project name.")
 	templateDescription := createTemplate.String("desc", "", "The template's description.")
+	pullTemplate := createTemplate.Bool("pull", false, "Whether to pull packages from git and save it locally or not.")
 
 	// 'create' subcommand to create a project from template
 	create := flag.NewFlagSet("create", flag.PanicOnError)
@@ -35,7 +36,7 @@ func main() {
 
 	switch os.Args[1] {
 	case createTemplate.Name():
-		commands.HandleCreateTemplate(createTemplate, templateName, templateDescription)
+		commands.HandleCreateTemplate(createTemplate, templateName, templateDescription, pullTemplate)
 		break
 	case create.Name():
 		commands.HandleCreate(create, projectName)
