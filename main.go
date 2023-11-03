@@ -23,6 +23,7 @@ func main() {
 	// 'create' subcommand to create a project from template
 	create := flag.NewFlagSet("create", flag.PanicOnError)
 	projectName := create.String("pn", "", "The name of the project being create. Default to the template's name.")
+	newLocation := create.String("nl", "", "A new location of where to create the template. Default is the location of where the command was called")
 
 	// 'bring' subcommand to bring either the config or a template to where the CLI was called to possibly be updated
 	bring := flag.NewFlagSet("bring", flag.PanicOnError)
@@ -39,7 +40,7 @@ func main() {
 		commands.HandleCreateTemplate(createTemplate, templateName, templateDescription, pullTemplate)
 		break
 	case create.Name():
-		commands.HandleCreate(create, projectName)
+		commands.HandleCreate(create, projectName, newLocation)
 		break
 	case bring.Name():
 		commands.HandleBring(bring, bringConfig)
