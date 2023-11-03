@@ -5,14 +5,15 @@ import (
 	"devden/models"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *string) {
+func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *string, pull *bool) {
 	if len(os.Args) < 3 {
-		fmt.Println("Please provide the location of the template you want to create.\nie C:/some/path/to/template/directory or https://some-url.com/someproject/project.git")
+		fmt.Println("Please provide the location of the template you want to create.\nie C:/some/path/to/template/directory or . (for current directory) or https://some-url.com/someproject/project.git")
 		os.Exit(1)
 	}
 	// Parses the arguments
@@ -22,15 +23,15 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 	var location string = os.Args[2]
 
 	if helpers.IsStringURL(location) {
-		err := HandleCloudTemplates(name, desc, location)
+		err := handleCloudTemplates(name, desc, pull, location)
 		if err != nil {
-			fmt.Println("Could not save your cloud template")
+			fmt.Printf("Could not save your cloud template because of [Error = %s]", err.Error())
 			os.Exit(1)
 		}
 	} else {
-		err := HandleLocalTemplate(name, desc, location)
+		err := handleLocalTemplate(name, desc, location)
 		if err != nil {
-			fmt.Println("Could not save your local template")
+			fmt.Printf("Could not save your local template because of [Error = %s]", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -40,7 +41,7 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 	// }
 }
 
-func HandleLocalTemplate(name *string, desc *string, location string) error {
+func handleLocalTemplate(name *string, desc *string, location string) error {
 	// Gets the name at the end (ie path/template/template-name) will return template-name
 	templatePath, err := filepath.Abs(location)
 	if err != nil {
@@ -78,6 +79,7 @@ func HandleLocalTemplate(name *string, desc *string, location string) error {
 
 	// Zip the template directory
 	helpers.Zip(templatePath, templatesDir, templatePossibleName)
+	log.Println("Finished Zipping the template")
 
 	templateConfig := models.TemplateConfig{
 		Id:                   helpers.GenerateId(8),
@@ -94,7 +96,7 @@ func HandleLocalTemplate(name *string, desc *string, location string) error {
 	return nil
 }
 
-func HandleCloudTemplates(name *string, desc *string, location string) error {
+func handleCloudTemplates(name *string, desc *string, pull *bool, location string) error {
 	// Get path of the executable to create a directory there
 	execPath, err := os.UserHomeDir()
 	if err != nil {
@@ -103,8 +105,8 @@ func HandleCloudTemplates(name *string, desc *string, location string) error {
 	}
 
 	locationSplit := strings.Split(location, "/")
-	templateName := strings.ReplaceAll(locationSplit[len(locationSplit)-1], ".git", "")
-
+	gitPackageName := strings.ReplaceAll(locationSplit[len(locationSplit)-1], ".git", "")
+	var templateName string = gitPackageName
 	// If there is a name provided overwrite the template name
 	if *name != "" {
 		templateName = *name
@@ -127,6 +129,25 @@ func HandleCloudTemplates(name *string, desc *string, location string) error {
 		IsCloud:              true,
 		PreCreationCommands:  []string{},
 		PostCreationCommands: []string{},
+	}
+
+	if *pull {
+		var fullPath string = filepath.Join(templatesDir, gitPackageName)
+		// Workflow to run the command to git clone this package, archive it, then remove the git package
+		err = helpers.PullTemplate(location, templatesDir)
+		if err != nil {
+			return err
+		}
+		helpers.Zip(fullPath, templatesDir, templateName)
+		log.Println("Finished Zipping the template")
+		// delete the git directory
+		err := os.RemoveAll(fullPath)
+		if err != nil {
+			return err
+		}
+		// update the config
+		templateConfig.IsCloud = false
+		templateConfig.URI = templatesDir
 	}
 
 	// Write an object with the project configuration in it.

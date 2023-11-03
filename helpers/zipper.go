@@ -11,8 +11,8 @@ import (
 )
 
 func Zip(source string, destination string, name string) error {
-	log.Println("Zipping your template")
-	archive, err := os.Create(fmt.Sprintf("%s/%s.zip", destination, name))
+	log.Println("Creating Zip Archive")
+	archive, err := os.Create(filepath.Join(destination, fmt.Sprintf("%s.zip", name)))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,6 +21,7 @@ func Zip(source string, destination string, name string) error {
 	zipWriter := zip.NewWriter(archive)
 	defer zipWriter.Close()
 
+	log.Println("Starting to zip")
 	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
