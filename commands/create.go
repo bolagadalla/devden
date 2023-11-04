@@ -72,7 +72,7 @@ func handleCreateFromCloudTemplate(destination string, newProjectName string, co
 	if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
 		return err
 	}
-	err := helpers.PullTemplate(config.URI, filePath)
+	err := helpers.PullTemplate(config.URI, ".", filePath)
 	if err != nil {
 		return err
 	}

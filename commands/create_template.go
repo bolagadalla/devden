@@ -134,7 +134,7 @@ func handleCloudTemplates(name *string, desc *string, pull *bool, location strin
 	if *pull {
 		var fullPath string = filepath.Join(templatesDir, gitPackageName)
 		// Workflow to run the command to git clone this package, archive it, then remove the git package
-		err = helpers.PullTemplate(location, templatesDir)
+		err = helpers.PullTemplate(location, gitPackageName, templatesDir)
 		if err != nil {
 			return err
 		}
