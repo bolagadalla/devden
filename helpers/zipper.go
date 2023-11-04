@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func Zip(source string, destination string, name string) error {
@@ -35,7 +34,7 @@ func Zip(source string, destination string, name string) error {
 
 		header.Method = zip.Deflate
 
-		header.Name, err = filepath.Rel(filepath.Dir(source), path)
+		header.Name, err = filepath.Rel(source, path)
 		if err != nil {
 			return err
 		}
@@ -88,10 +87,8 @@ func Unzip(source string, destination string) error {
 
 func UnzipFile(f *zip.File, destination string) error {
 	filePath := filepath.Join(destination, f.Name)
-	if !strings.HasPrefix(filePath, filepath.Clean(destination)+string(os.PathSeparator)) {
-		return fmt.Errorf("Couldn't find the archive anymore at path: %s", filePath)
-	}
 
+	// If its a directory then create it and return
 	if f.FileInfo().IsDir() {
 		if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
 			return err
@@ -100,6 +97,7 @@ func UnzipFile(f *zip.File, destination string) error {
 		return nil
 	}
 
+	// This is a file so we will create that file
 	if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
 		return err
 	}
