@@ -22,32 +22,33 @@ func HandleInit(create *flag.FlagSet, allowDotFiles *string) error {
 	gConfig.AllowDotFiles = *allowDotFiles == "true"
 
 	// Write the global config
-	helpers.WriteJsonFile[**models.GlobalConfig](filepath.Join(execPath, ".devden", "templates", "global-config.json"), &gConfig)
+	helpers.WriteJsonFile[*models.GlobalConfig](filepath.Join(execPath, ".devden", "templates", "global-config.json"), gConfig)
 	return nil
 }
 
 func createGlobalConfig() *models.GlobalConfig {
-	gConfig := getGlobalConfigIfExists()
+	gConfig, location := getGlobalConfigIfExists()
 	if gConfig == nil {
 		gConfig = &models.GlobalConfig{
 			AllowDotFiles:      true,
 			TemplatesLocations: []string{},
+			CurrentLocation:    location,
 		}
 	}
 	return gConfig
 }
 
-func getGlobalConfigIfExists() *models.GlobalConfig {
+func getGlobalConfigIfExists() (*models.GlobalConfig, string) {
 	// Get path of the executable to create a directory there
 	execPath, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Println("You need to set a default home directory first.")
-		return nil
+		return nil, ""
 	}
 	var globalConfigLocation string = filepath.Join(execPath, ".devden", "templates", "global-config.json")
 
 	if helpers.DoesFileExist(globalConfigLocation) {
-		return helpers.ReadJsonFile[*models.GlobalConfig](globalConfigLocation)
+		return helpers.ReadJsonFile[*models.GlobalConfig](globalConfigLocation), globalConfigLocation
 	}
-	return nil
+	return nil, globalConfigLocation
 }

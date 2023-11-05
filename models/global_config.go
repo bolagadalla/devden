@@ -1,6 +1,7 @@
 package models
 
 type GlobalConfig struct {
-	AllowDotFiles bool
+	AllowDotFiles      bool
 	TemplatesLocations []string
+	CurrentLocation    string
 }
