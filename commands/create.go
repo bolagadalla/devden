@@ -33,7 +33,7 @@ func HandleCreate(create *flag.FlagSet, pn *string, nl *string) {
 
 	// Make sure the template exists
 	var templatesDir string = filepath.Join(execPath, ".devden", "templates", templateName)
-	if !helpers.DoesTemplateExist(templatesDir) {
+	if !helpers.DoesFileExist(templatesDir) {
 		fmt.Println("That is not a valid template, Run [devden list]")
 		os.Exit(1)
 	}

@@ -35,6 +35,10 @@ func main() {
 	updateName := update.String("name", "", "Updates the template's name to a new name.")
 	updateDescription := update.String("desc", "", "The template's description.")
 
+	// 'init' to initalize the global config file with the default or with the passed in values
+	init := flag.NewFlagSet("init", flag.PanicOnError)
+	allowDotFiles := init.String("allow-dot-files", "true", "Whether or not to include the .<files> in the templates. Defaults to \"true\"")
+
 	switch os.Args[1] {
 	case createTemplate.Name():
 		commands.HandleCreateTemplate(createTemplate, templateName, templateDescription, pullTemplate)
@@ -48,6 +52,8 @@ func main() {
 	case update.Name():
 		commands.HandleUpdate(update, updateConfig, updateName, updateDescription)
 		break
+	case init.Name():
+		commands.HandleInit(init, allowDotFiles)
 	default:
 		log.Fatal(fmt.Sprintf("Could not understand that command: %s", os.Args[1]))
 	}

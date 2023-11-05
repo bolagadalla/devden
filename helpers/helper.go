@@ -15,7 +15,7 @@ func IsStringPath(str string) bool {
 	return len(re.FindAllString(str, -1)) >= 1
 }
 
-func DoesTemplateExist(location string) bool {
+func DoesFileExist(location string) bool {
 	_, err := os.Stat(location)
 	if err == nil {
 		return true
