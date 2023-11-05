@@ -24,21 +24,9 @@ func HandleCreate(create *flag.FlagSet, pn *string, nl *string) {
 	if *nl != "" {
 		destination = *nl
 	}
-	// Get path of the executable to create a directory there
-	execPath, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Println("You need to set a default home directory first. Could not get your home directory.")
-		os.Exit(1)
-	}
-
-	// Make sure the template exists
-	var templatesDir string = filepath.Join(execPath, ".devden", "templates", templateName)
-	if !helpers.DoesFileExist(templatesDir) {
-		fmt.Println("That is not a valid template, Run [devden list]")
-		os.Exit(1)
-	}
+	
 	// load the template config
-	var templateConfig *models.TemplateConfig = helpers.ReadJsonFile[*models.TemplateConfig](filepath.Join(templatesDir, "config.json"))
+	var templateConfig *models.TemplateConfig = getTemplateConfig(templateName)
 
 	if templateConfig.IsCloud {
 		err := handleCreateFromCloudTemplate(destination, *pn, templateConfig)
@@ -46,18 +34,18 @@ func HandleCreate(create *flag.FlagSet, pn *string, nl *string) {
 			log.Fatalf("Could not clone your cloud template because of [Error = %s]", err.Error())
 		}
 	} else {
-		err := handleCreateFromLocalTemplate(templatesDir, destination, *pn, templateConfig)
+		err := handleCreateFromLocalTemplate(destination, *pn, templateConfig)
 		if err != nil {
 			log.Fatalf("Could not unzip your template because of [Error = %s]", err.Error())
 		}
 	}
 }
 
-func handleCreateFromLocalTemplate(baseLocation string, destination string, newProjectName string, config *models.TemplateConfig) error {
+func handleCreateFromLocalTemplate(destination string, newProjectName string, config *models.TemplateConfig) error {
 	if newProjectName == "" {
 		newProjectName = config.Name
 	}
-	err := helpers.Unzip(filepath.Join(baseLocation, config.Name+".zip"), filepath.Join(destination, newProjectName))
+	err := helpers.Unzip(filepath.Join(config.CurrentLocation, config.Name+".zip"), filepath.Join(destination, newProjectName))
 	if err != nil {
 		return err
 	}
@@ -77,4 +65,22 @@ func handleCreateFromCloudTemplate(destination string, newProjectName string, co
 		return err
 	}
 	return nil
+}
+
+func getTemplateConfig(templateName string) *models.TemplateConfig {
+	// Get path of the executable to create a directory there
+	execPath, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("You need to set a default home directory first. Could not get your home directory.")
+		os.Exit(1)
+	}
+
+	// Make sure the template exists
+	var templatesDir string = filepath.Join(execPath, ".devden", "templates", templateName)
+	if !helpers.DoesFileExist(templatesDir) {
+		fmt.Println("That is not a valid template, Run [devden list]")
+		os.Exit(1)
+	}
+
+	return helpers.ReadJsonFile[*models.TemplateConfig](filepath.Join(templatesDir, "config.json"))
 }

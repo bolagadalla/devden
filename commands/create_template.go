@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -35,21 +36,17 @@ func HandleCreateTemplate(createTemplate *flag.FlagSet, name *string, desc *stri
 			os.Exit(1)
 		}
 	}
-	// else {
-	// 	fmt.Printf("[%s] is not a valid path.", location)
-	// 	os.Exit(1)
-	// }
 }
 
 func handleLocalTemplate(name *string, desc *string, location string) error {
 	// Gets the name at the end (ie path/template/template-name) will return template-name
-	templatePath, err := filepath.Abs(location)
+	templateSourcePath, err := filepath.Abs(location)
 	if err != nil {
 		fmt.Printf("Couldn't resolve the given path: %s\n", location)
 		return err
 	}
 
-	_, templatePossibleName := filepath.Split(templatePath)
+	_, templatePossibleName := filepath.Split(templateSourcePath)
 
 	// If there is a name provided overwrite the template name
 	if *name != "" {
@@ -69,8 +66,8 @@ func handleLocalTemplate(name *string, desc *string, location string) error {
 	}
 
 	// Generate a path and create it if it doesnt exist
-	var templatesDir string = filepath.Join(execPath, ".devden", "templates", templatePossibleName)
-	err = os.MkdirAll(templatesDir, os.ModePerm)
+	var templateLocation string = filepath.Join(execPath, ".devden", "templates", templatePossibleName)
+	err = os.MkdirAll(templateLocation, os.ModePerm)
 
 	if err != nil {
 		fmt.Println("Dont have permission to create the required directories.")
@@ -78,21 +75,32 @@ func handleLocalTemplate(name *string, desc *string, location string) error {
 	}
 
 	// Zip the template directory
-	helpers.Zip(templatePath, templatesDir, templatePossibleName)
+	helpers.Zip(templateSourcePath, templateLocation, templatePossibleName)
 	log.Println("Finished Zipping the template")
 
 	templateConfig := models.TemplateConfig{
 		Id:                   helpers.GenerateId(8),
 		Name:                 templatePossibleName,
 		Description:          *desc,
-		URI:                  templatePath,
+		URI:                  templateSourcePath,
+		CurrentLocation:      templateLocation,
 		IsCloud:              false,
 		PreCreationCommands:  []string{},
 		PostCreationCommands: []string{},
 	}
 
 	// Write an object with the project configuration in it.
-	helpers.WriteJsonFile[*models.TemplateConfig](filepath.Join(templatesDir, "config.json"), &templateConfig)
+	helpers.WriteJsonFile[*models.TemplateConfig](filepath.Join(templateLocation, "config.json"), &templateConfig)
+
+	// Write this into the global config
+	gConfig := createGlobalConfig()
+	if !slices.Contains(gConfig.TemplatesLocations, templateLocation) {
+		gConfig.TemplatesLocations = append(gConfig.TemplatesLocations, templateLocation)
+	}
+
+	// Write the global config
+	helpers.WriteJsonFile[**models.GlobalConfig](filepath.Join(execPath, ".devden", "templates", "global-config.json"), &gConfig)
+
 	return nil
 }
 
@@ -118,27 +126,28 @@ func handleCloudTemplates(name *string, desc *string, pull *bool, location strin
 	}
 
 	// Generate a path and create it if it doesnt exist
-	var templatesDir string = filepath.Join(execPath, ".devden", "templates", templateName)
-	err = os.MkdirAll(templatesDir, os.ModePerm)
+	var templateLocation string = filepath.Join(execPath, ".devden", "templates", templateName)
+	err = os.MkdirAll(templateLocation, os.ModePerm)
 
 	templateConfig := models.TemplateConfig{
 		Id:                   helpers.GenerateId(8),
 		Name:                 templateName,
 		Description:          *desc,
 		URI:                  location,
+		CurrentLocation:      templateLocation,
 		IsCloud:              true,
 		PreCreationCommands:  []string{},
 		PostCreationCommands: []string{},
 	}
 
 	if *pull {
-		var fullPath string = filepath.Join(templatesDir, gitPackageName)
+		var fullPath string = filepath.Join(templateLocation, gitPackageName)
 		// Workflow to run the command to git clone this package, archive it, then remove the git package
-		err = helpers.PullTemplate(location, gitPackageName, templatesDir)
+		err = helpers.PullTemplate(location, gitPackageName, templateLocation)
 		if err != nil {
 			return err
 		}
-		helpers.Zip(fullPath, templatesDir, templateName)
+		helpers.Zip(fullPath, templateLocation, templateName)
 		log.Println("Finished Zipping the template")
 		// delete the git directory
 		err := os.RemoveAll(fullPath)
@@ -147,10 +156,10 @@ func handleCloudTemplates(name *string, desc *string, pull *bool, location strin
 		}
 		// update the config
 		templateConfig.IsCloud = false
-		templateConfig.URI = templatesDir
+		templateConfig.URI = templateLocation
 	}
 
 	// Write an object with the project configuration in it.
-	helpers.WriteJsonFile[*models.TemplateConfig](filepath.Join(templatesDir, "config.json"), &templateConfig)
+	helpers.WriteJsonFile[*models.TemplateConfig](filepath.Join(templateLocation, "config.json"), &templateConfig)
 	return nil
 }

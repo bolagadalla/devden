@@ -25,6 +25,11 @@ func main() {
 	projectName := create.String("pn", "", "The name of the project being create. Default to the template's name.")
 	newLocation := create.String("nl", "", "A new location of where to create the template. Default is the location of where the command was called")
 
+	// 'list' subcommand to list the existing templates
+	list := flag.NewFlagSet("list", flag.PanicOnError)
+	listAll := list.Bool("all", false, "Lists all the templates that exists instead of 10 at a time")
+	pageNumber := list.Int("page", 1, "The page number of the templates, 10 per page, starting at page 1")
+	
 	// 'bring' subcommand to bring either the config or a template to where the CLI was called to possibly be updated
 	bring := flag.NewFlagSet("bring", flag.PanicOnError)
 	bringConfig := bring.Bool("config", false, "Brings the devden config to the directory the command is being called.")
@@ -42,16 +47,14 @@ func main() {
 	switch os.Args[1] {
 	case createTemplate.Name():
 		commands.HandleCreateTemplate(createTemplate, templateName, templateDescription, pullTemplate)
-		break
 	case create.Name():
 		commands.HandleCreate(create, projectName, newLocation)
-		break
+	case list.Name():
+		commands.HandleList(list, listAll, pageNumber)
 	case bring.Name():
 		commands.HandleBring(bring, bringConfig)
-		break
 	case update.Name():
 		commands.HandleUpdate(update, updateConfig, updateName, updateDescription)
-		break
 	case init.Name():
 		commands.HandleInit(init, allowDotFiles)
 	default:

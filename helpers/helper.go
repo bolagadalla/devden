@@ -1,8 +1,11 @@
 package helpers
 
 import (
+	"devden/models"
+	"fmt"
 	"os"
 	"regexp"
+	"text/tabwriter"
 )
 
 func IsStringURL(str string) bool {
@@ -22,4 +25,13 @@ func DoesFileExist(location string) bool {
 	}
 
 	return false
+}
+
+func PrintTable(configs []*models.TemplateConfig) {
+	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
+	fmt.Fprintln(w, "Id\tName\tDescription\tIsCloud")
+	for _, config := range configs {
+		fmt.Fprintln(w, fmt.Sprintf("%s\t%s\t%s\t%t", config.Id, config.Name, config.Description, config.IsCloud))
+	}
+	w.Flush()
 }
