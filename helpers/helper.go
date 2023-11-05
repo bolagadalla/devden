@@ -28,7 +28,7 @@ func DoesFileExist(location string) bool {
 }
 
 func PrintTable(configs []*models.TemplateConfig) {
-	w := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
+	w := tabwriter.NewWriter(os.Stdout, 1, 2, 2, ' ', 0)
 	fmt.Fprintln(w, "Id\tName\tDescription\tIsCloud")
 	for _, config := range configs {
 		fmt.Fprintln(w, fmt.Sprintf("%s\t%s\t%s\t%t", config.Id, config.Name, config.Description, config.IsCloud))
